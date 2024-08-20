@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML to Word Converter</title>
+    <style>
+        body {
+            text-align: center; /* Center the title */
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin: 0 auto; /* Center the container */
+            max-width: 1200px; /* Limit the container width */
+        }
+        .section {
+            width: 45%;
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%; /* Fixed width */
+            min-height: 150px; /* Minimum height */
+            max-height: 700px; /* Maximum height */
+            resize: vertical; /* Allow vertical resizing only */
+            margin-bottom: 5px;
+        }
+        .button-container {
+            text-align: center; /* Center the button */
+        }
+        button {
+            width: auto; /* Use auto width */
+            margin: 5px 0;
+        }
+        h2 {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>HTML to Word Converter</h1>
+    <div class="container">
+        <div class="section">
+            <h2>English HTML</h2>
+            <textarea id="htmlInput1" placeholder="Enter HTML code here..."></textarea>
+            <div class="button-container">
+                <button onclick="convertToWord('htmlInput1', 'English Conversion')">Convert and Download</button>
+            </div>
+        </div>
+        <div class="section">
+            <h2>HTML Français</h2>
+            <textarea id="htmlInput2" placeholder="Entrez le code HTML ici..."></textarea>
+            <div class="button-container">
+                <button onclick="convertToWord('htmlInput2', 'Conversion Française')">Convertir et Télécharger</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function convertToWord(textareaId, docName) {
+            // Get the HTML content from the specified textarea
+            let htmlContent = document.getElementById(textareaId).value;
+
+            // Use DOMParser to parse the HTML string
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+
+            // Bold numbers with periods in specific elements
+            const numberElements = doc.querySelectorAll('.ndp-section, .ndp-subsec-number');
+            numberElements.forEach(element => {
+                const content = element.textContent.trim();
+                if (/\d+\.\d*/.test(content)) {
+                    element.innerHTML = `<b>${content}</b>`;
+                }
+            });
+
+            // Combine section and section title into one bolded line with a blank line below
+            const sectionRows = doc.querySelectorAll('.ndp-sec-row');
+            sectionRows.forEach(row => {
+                const section = row.querySelector('.ndp-section');
+                const sectionName = row.querySelector('.ndp-section-name');
+                if (section && sectionName) {
+                    // Combine section and title in one line and bold it
+                    const combinedContent = `
+                        <span style="display: inline; font-weight: bold;">
+                            ${section.innerHTML} ${sectionName.querySelector('.ndp-section-title').innerHTML}
+                        </span>`;
+                    // Add a blank line below the section title
+                    //row.innerHTML = `<br/><br/>${combinedContent}<br/><br/>`;
+                    row.innerHTML = `<p style="margin: 0; padding: 0; line-height: 1.5;">&nbsp;</p>${combinedContent}`;
+                }
+            });
+
+            // Combine title and text into one bolded line
+            const titleRows = doc.querySelectorAll('.ndp-subsec-row');
+            titleRows.forEach(row => {
+                const title = row.querySelector('.ndp-title');
+                const text = row.querySelector('.ndp-text');
+                if (title) {
+                    const titleContent = title.textContent.trim();
+                    // Handle cases where text may be missing or on the next line
+                    const combinedContent = text ? `
+                        <span style="display: inline; font-weight: bold;">
+                            ${titleContent}
+                        </span>
+                        <span style="display: inline;">
+                            ${text.textContent.trim()}
+                        </span>` : `<span style="display: inline; font-weight: bold;">
+                            ${titleContent}
+                        </span>`;
+                    row.innerHTML = combinedContent;
+                }
+            });
+
+            // Add a blank line above each subsec number by wrapping it in a new div with a blank line before it
+            const subsecRows = doc.querySelectorAll('.ndp-subsec-row');
+            subsecRows.forEach(row => {
+                const numberElement = row.querySelector('.ndp-subsec-number');
+                if (numberElement) {
+                    // Create a new container for the subsec number
+                    const newDiv = document.createElement('div');
+                    newDiv.innerHTML = `<br/><div class="ndp-subsec-number">${numberElement.innerHTML}</div>`;
+                    // Replace the old content with the new content
+                    row.innerHTML = newDiv.innerHTML;
+                }
+            });
+
+            // Serialize the modified HTML
+            htmlContent = new XMLSerializer().serializeToString(doc);
+
+            // Define the header for a Word document with CSS to preserve inline formatting
+            const header = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office'
+                xmlns:w='urn:schemas-microsoft-com:office:word'
+                xmlns='https://www.w3.org/TR/html40/'>
+                <head><meta charset="utf-8"><title>Document</title>
+                <style>
+                    body { font-family: 'Times New Roman', serif; }
+                    p, div { margin: 0; padding: 0; }
+                    .inline { display: inline; }
+                    .refinfo-release-date { text-align: right; }
+                </style>
+                </head><body>`;
+
+            // Define the footer for a Word document
+            const footer = `</body></html>`;
+
+            // Combine the header, content, and footer
+            const fullContent = header + htmlContent + footer;
+
+            // Create a Blob with the full content
+            const blob = new Blob(['\ufeff', fullContent], {
+                type: 'application/msword'
+            });
+
+            // Create a link element to trigger the download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = docName;
+
+            // Append the link to the body and trigger the click
+            document.body.appendChild(link);
+            link.click();
+
+            // Remove the link after triggering the download
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
+
